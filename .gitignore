@@ -1,0 +1,10 @@
+# Vim swap / backup
+*.swp
+*.swo
+*~
+# Undo dir (kept in $HOME, not the repo)
+.undo/
+undodir/
+# OS
+.DS_Store
+Thumbs.db
