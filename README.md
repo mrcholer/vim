@@ -41,8 +41,23 @@ chmod +x install.sh
 This copies `vimrc` to `~/.vimrc`, installs vim-plug, and runs `PlugInstall`
 to fetch NERDTree, vim-devicons and onedark.
 
+## Icons
+
+`icons/` contains flat file-type icons for the types Vim shows in the NERDTree
+sidebar (with vim-devicons):
+
+- `icon-c.png` — C source (`.c`)
+- `icon-h.png` — C header (`.h`)
+- `icon-md.png` — Markdown (`.md`)
+- `icon-folder.png` — folder
+- `icon-text.png` — text file
+- `icon-file.png` — generic file
+
+Inside Vim the icons are rendered from a **Nerd Font** (e.g. JetBrainsMono Nerd Font), not from these PNGs — the PNGs are here so the repo has a visual icon for each file type on GitHub.
+
 ## Files
 
 - `vimrc` — the full Vim configuration (copy to `~/.vimrc`)
 - `install.sh` — one-command installer
 - `README.md` — this file
+- `icons/` — file-type icons
