@@ -1,10 +1,27 @@
-# Vim swap / backup
+# Vim runtime
+.vim/plugged/
+.vim/sessions/
+.vim/backup/
+.vim/swap/
+.vim/undo/
+.vim/__pycache__/
+.vim/.netrwhist
 *.swp
 *.swo
 *~
-# Undo dir (kept in $HOME, not the repo)
-.undo/
-undodir/
+
+# Downloaded plugins (nested git repos)
+.vim/.vim/pack/plugins/start/
+.vim/.vim/plugged/
+.vim/pack/plugins/start/
+
+# Nested vim config dir (created by install scripts)
+.vim/.vim/
+
+# Backup files
+.vim/nataku.py.bak*
+.vimrc-backup*/
+
 # OS
 .DS_Store
 Thumbs.db
