@@ -1,6 +1,6 @@
 " ============================================================================
 "  .vimrc — 42/1337 config (VSCode-style layout)
-"  Copy to ~/.vimrc. Plugins auto-install on first launch (needs curl + git).
+"  Copy to ~/.vimrc. Run install.sh to install the optional plugins.
 "  For icons, set your terminal font to a Nerd Font.
 "
 "  `vim .` / `vi .` / `vim`  ->  file tree on the LEFT, file content on the RIGHT
@@ -12,7 +12,6 @@
 "         <leader>v valgrind | <leader>x auto-fix the Norm | <leader>? all keys
 "         <leader>i add #include | <leader>a stage file | <leader>c commit (+push)
 "         <F4> copy mode (clean Ctrl+Shift+C) | <leader>y/<leader>p system clipboard
-"         <C-k>/<F8> (free) | <leader>s send file/selection | <leader>d git diff
 " ============================================================================
 
 set nocompatible
@@ -20,18 +19,25 @@ set encoding=utf-8
 scriptencoding utf-8
 let mapleader = ' '
 
-source $VIMRUNTIME/defaults.vim
-
-" ----------------------------------------------------------------------------
-" Plugins (vim-plug, bootstrapped automatically)
-" ----------------------------------------------------------------------------
-let s:plug = expand('~/.vim/autoload/plug.vim')
-if empty(glob(s:plug))
-    silent execute '!curl -fsSLo ' . shellescape(s:plug) . ' --create-dirs '
-        \ . 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
-    autocmd VimEnter * ++once PlugInstall --sync | source $MYVIMRC
+if has('nvim') || v:version < 802 || !has('timers') || !has('signs') || !has('float')
+    echohl ErrorMsg
+    echomsg 'This configuration requires full Vim 8.2 or later with +timers, +signs and +float.'
+    echohl None
+    finish
 endif
 
+execute 'source ' . fnameescape($VIMRUNTIME . '/defaults.vim')
+
+" Keep the initial directory read quiet until VimEnter opens the sidebar.
+if !v:vim_did_enter
+    let s:startup_shortmess = &shortmess
+    set shortmess+=F
+endif
+
+" ----------------------------------------------------------------------------
+" Plugins (installed by install.sh)
+" ----------------------------------------------------------------------------
+let s:plug = expand('~/.vim/autoload/plug.vim')
 if filereadable(s:plug)
     call plug#begin('~/.vim/plugged')
     Plug 'preservim/nerdtree'
@@ -56,17 +62,25 @@ set signcolumn=yes
 set mouse=a
 set hidden
 set updatetime=300
-set nobackup nowritebackup noswapfile
+set nobackup writebackup
 set splitright splitbelow
 set autoread
 
-" Persistent undo (since swap/backup are off, this is your safety net)
-let s:undo = expand('~/.vim/undo')
-if !isdirectory(s:undo)
-    call mkdir(s:undo, 'p', 0700)
+" Keep crash recovery and persistent undo outside project directories.
+let s:swap = expand('~/.vim/swap')
+silent! call mkdir(s:swap, 'p', 0700)
+if isdirectory(s:swap) && filewritable(s:swap) == 2
+    let &directory = escape(s:swap, ',\') . '//'
 endif
-let &undodir = s:undo
-set undofile
+
+let s:undo = expand('~/.vim/undo')
+if has('persistent_undo')
+    silent! call mkdir(s:undo, 'p', 0700)
+    if isdirectory(s:undo) && filewritable(s:undo) == 2
+        let &undodir = escape(s:undo, ',\') . '//'
+        set undofile
+    endif
+endif
 
 " Share the system clipboard when Vim supports it
 if has('clipboard')
@@ -352,7 +366,7 @@ function! s:StatusInfo(win, buf, w, cp) abort
 
     " git: branch, sync, counts, file state, last commit
     if !empty(l:i)
-        let l:o .= ' ' . s:SL('SLPurple', nr2char(0xe0a0) . ' ' . l:i.branch)
+        let l:o .= ' ' . s:SL('SLPurple', ($VIM_PLAIN_ICONS ==# '1' ? 'git' : nr2char(0xe0a0)) . ' ' . l:i.branch)
         if l:i.behind    | let l:o .= ' ' . s:SL('SLBlue',   '↓' . l:i.behind)    | endif
         if l:i.ahead     | let l:o .= ' ' . s:SL('SLBlue',   '↑' . l:i.ahead)     | endif
         if l:i.staged    | let l:o .= ' ' . s:SL('SLGreen',  '●' . l:i.staged)    | endif
@@ -569,9 +583,81 @@ inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 " NERDTree + devicons
 " ----------------------------------------------------------------------------
 let g:webdevicons_enable = 1
-let g:webdevicons_enable_nerdtree = 1
+let g:webdevicons_enable_nerdtree = $VIM_PLAIN_ICONS !=# '1'
+let g:DevIconsEnableFoldersOpenClose = 1
+
+" Seti and Devicons glyphs from Nerd Fonts. vim-devicons merges these
+" overrides into its own dictionaries and handles filenames before extensions.
+let g:WebDevIconsUnicodeDecorateFileNodesExtensionSymbols = {
+    \ 'c': '', 'h': '', 'hpp': '', 'hh': '', 'hxx': '',
+    \ 'md': '', 'txt': '', 'log': '',
+    \ 'pyi': '', 'cjs': '', 'mts': '', 'cts': '', 'tsx': '',
+    \ 'jsonc': '', 'lock': '', 'env': '', 'svg': '', 'avif': '',
+    \ 'sqlite': '', 'sqlite3': '', 'zsh': '',
+    \ }
+let g:WebDevIconsUnicodeDecorateFileNodesExactSymbols = {
+    \ 'readme': '', 'readme.md': '', 'changelog.md': '', 'license': '',
+    \ 'makefile': '', 'gnumakefile': '', 'cmakelists.txt': '',
+    \ 'cmakepresets.json': '', '.editorconfig': '', '.clang-format': '',
+    \ '.clang-tidy': '', '.env': '', '.env.example': '',
+    \ 'dockerfile': '', 'compose.yml': '', 'compose.yaml': '',
+    \ 'docker-compose.yaml': '', '.dockerignore': '',
+    \ 'package.json': '', 'package-lock.json': '', 'pnpm-lock.yaml': '',
+    \ 'tsconfig.json': '', 'pyproject.toml': '', 'requirements.txt': '',
+    \ }
 let g:webdevicons_conceal_nerdtree_brackets = 1
 let g:WebDevIconsNerdTreeAfterGlyphPadding = '  '
+
+" The optional local wide icon font draws these glyphs across two cells.
+let s:wide_icon_codes = [
+    \ 0xe5fe, 0xe5ff, 0xe600, 0xe603, 0xe606, 0xe607, 0xe608, 0xe609, 0xe60a,
+    \ 0xe60b, 0xe60c, 0xe60d, 0xe60e, 0xe60f, 0xe610, 0xe611, 0xe612, 0xe613,
+    \ 0xe614, 0xe615, 0xe619, 0xe61b, 0xe61c, 0xe61d, 0xe61e, 0xe61f, 0xe620,
+    \ 0xe623, 0xe624, 0xe627, 0xe628, 0xe62b, 0xe62c, 0xe62d, 0xe706, 0xe707,
+    \ 0xe70c, 0xe718, 0xe728, 0xe737, 0xe738, 0xe745, 0xe755, 0xe768, 0xe769,
+    \ 0xe76a, 0xe791, 0xe795, 0xe798, 0xe7a7, 0xe7a8, 0xe7af, 0xe7b0, 0xe7b1,
+    \ 0xe7b4, 0xe7b8, 0xe7ba, 0xf0fd, 0xf1c9, 0xf296, 0xf313, 0xf482, 0xf499,
+    \ 0xf80a, 0xf81a, 0xfac5, 0xfb68, 0xfba7, 0xfcb9, 0xfcd2, 0xfd42,
+    \ ]
+
+function! s:WideTreeIcon(symbol) abort
+    let l:code = char2nr(a:symbol)
+    if index(s:wide_icon_codes, l:code) < 0
+        return a:symbol
+    endif
+    let l:left = 0x100000 + 2 * (l:code - 0xe000)
+    return nr2char(l:left) . nr2char(l:left + 1)
+endfunction
+
+function! s:UseWideTreeIcons() abort
+    if !g:webdevicons_enable_nerdtree || !exists('*WebDevIconsGetFileTypeSymbol')
+        \ || $VIM_WIDE_ICONS ==# '0'
+        return
+    endif
+    if $VIM_WIDE_ICONS !=# '1' && empty($DISPLAY . $WAYLAND_DISPLAY)
+        return
+    endif
+    let l:data_home = empty($XDG_DATA_HOME) ? expand('~/.local/share') : $XDG_DATA_HOME
+    let l:font_dir = has('mac') ? expand('~/Library/Fonts') : l:data_home . '/fonts'
+    if !filereadable(l:font_dir . '/VimTerminalMonoWideIcons-Regular.ttf')
+        return
+    endif
+    let l:cached_server = expand('~/.vim/wide-icons-cached-terminal')
+    if !empty($GNOME_TERMINAL_SERVICE) && filereadable(l:cached_server)
+        \ && get(readfile(l:cached_server, '', 1), 0, '') ==#
+        \ sha256($DBUS_SESSION_BUS_ADDRESS . "\n" . $GNOME_TERMINAL_SERVICE)
+        return
+    endif
+    call map(g:WebDevIconsUnicodeDecorateFileNodesExtensionSymbols, 's:WideTreeIcon(v:val)')
+    call map(g:WebDevIconsUnicodeDecorateFileNodesExactSymbols, 's:WideTreeIcon(v:val)')
+    call map(g:WebDevIconsUnicodeDecorateFileNodesPatternSymbols, 's:WideTreeIcon(v:val)')
+    for l:option in ['WebDevIconsUnicodeDecorateFileNodesDefaultSymbol',
+        \ 'WebDevIconsUnicodeDecorateFolderNodesDefaultSymbol',
+        \ 'WebDevIconsUnicodeDecorateFolderNodesSymlinkSymbol', 'DevIconsDefaultFolderOpenSymbol']
+        let g:[l:option] = s:WideTreeIcon(g:[l:option])
+    endfor
+    let g:WebDevIconsNerdTreeAfterGlyphPadding = ' '
+endfunction
 
 let g:NERDTreeShowHidden = 1             " like VSCode: show dotfiles...
 let g:NERDTreeMinimalUI = 1
@@ -583,12 +669,22 @@ let g:NERDTreeDirArrowCollapsible = '▾'
 let g:NERDTreeSortOrder = ['^__\.', '\.git$', '*/', '\.c$', '\.h$', '\.cpp$', '\.hpp$',
     \ '\.py$', '\.js$', '\.ts$', '\.go$', '\.rs$', '\.txt$', '\.md$', '\.json$', '\.ya\?ml$', '']
 let g:NERDTreeAutoDeleteBuffer = 1
+" vim-devicons' idle redraw clears virtual text. Refresh explicitly instead.
+let g:NERDTreeUpdateOnCursorHold = 0
 let g:NERDTreeHijackNetrw = 0            " we handle `vim .` ourselves (see Layout)
 let g:NERDTreeMouseMode = 3              " single click opens files AND folders
 
 " Show/hide the file sidebar: <C-b> (like VSCode), <C-n> or <F3>.
 " Showing it keeps the cursor in your editor; <leader>e jumps into the tree.
 function! s:TreeToggle() abort
+    if !exists(':NERDTreeToggle')
+        if exists(':Lexplore')
+            Lexplore
+        else
+            echo 'File browser unavailable. Run install.sh to install NERDTree.'
+        endif
+        return
+    endif
     NERDTreeToggle
     if &filetype ==# 'nerdtree'
         wincmd p
@@ -597,8 +693,15 @@ endfunction
 nnoremap <silent> <C-b> :call <SID>TreeToggle()<CR>
 nnoremap <silent> <C-n> :call <SID>TreeToggle()<CR>
 nnoremap <silent> <F3>  :call <SID>TreeToggle()<CR>
-nnoremap <silent> <leader>f :NERDTreeFind<CR>
-nnoremap <silent> <leader>e :NERDTreeFocus<CR>
+function! s:TreeAction(command) abort
+    if exists(':' . a:command)
+        execute a:command
+    else
+        call s:TreeToggle()
+    endif
+endfunction
+nnoremap <silent> <leader>f :call <SID>TreeAction('NERDTreeFind')<CR>
+nnoremap <silent> <leader>e :call <SID>TreeAction('NERDTreeFocus')<CR>
 
 " keep the tree a fixed-width sidebar, no clutter inside it
 augroup NERDTreeLook
@@ -634,14 +737,15 @@ augroup END
 " Press <F5> to refresh manually.
 " ----------------------------------------------------------------------------
 let s:norm_status = {}
-let s:norm_new    = {}
+let s:norm_root = ''
+let s:tree_timer = -1
 let s:git_age     = {}
 let s:git_state   = {}
 
-function! s:TreeBuf() abort
+function! s:TreeWin() abort
     for l:w in range(1, winnr('$'))
         if getbufvar(winbufnr(l:w), '&filetype') ==# 'nerdtree'
-            return winbufnr(l:w)
+            return win_getid(l:w)
         endif
     endfor
     return -1
@@ -693,16 +797,24 @@ function! s:GatherGit(root) abort
     endfor
 endfunction
 
-function! s:OnNormLine(ch, msg) abort
-    let l:msg = substitute(a:msg, "\e\\[[0-9;]*m", '', 'g')
-    let l:m = matchlist(l:msg, '^\(.\{-}\): \(OK!\|Error!\)\s*$')
-    if !empty(l:m)
-        let s:norm_new[fnamemodify(l:m[1], ':p')] = (l:m[2] ==# 'OK!') ? 'ok' : 'ko'
-    endif
+function! s:OnNormOutput(output, ch, msg) abort
+    call add(a:output, a:msg)
 endfunction
 
-function! s:OnNormExit(job, status) abort
-    let s:norm_status = s:norm_new
+function! s:OnNormClose(root, output, ch) abort
+    if a:root !=# s:norm_root || a:ch isnot job_getchannel(s:norm_job)
+        return
+    endif
+    try
+        let l:report = json_decode(join(a:output, ''))
+    catch
+        return
+    endtry
+    let s:norm_status = {}
+    for l:file in get(l:report, 'files', [])
+        let l:path = l:file.path =~# '^/' ? l:file.path : a:root . '/' . l:file.path
+        let s:norm_status[fnamemodify(l:path, ':p')] = l:file.status ==# 'OK' ? 'ok' : 'ko'
+    endfor
     call s:TreePaint()
 endfunction
 
@@ -711,13 +823,23 @@ function! s:GatherNorm(root) abort
         return
     endif
     if exists('s:norm_job') && job_status(s:norm_job) ==# 'run'
-        return
+        if s:norm_root ==# a:root
+            return
+        endif
+        let s:norm_root = ''
+        call job_stop(s:norm_job)
     endif
-    let s:norm_new = {}
-    let s:norm_job = job_start(['norminette', a:root], {
-        \ 'out_mode': 'nl',
-        \ 'out_cb': function('s:OnNormLine'),
-        \ 'exit_cb': function('s:OnNormExit'),
+    if s:norm_root !=# a:root
+        let s:norm_status = {}
+    endif
+    let s:norm_root = a:root
+    let l:output = []
+    let s:norm_job = job_start(['norminette', '--format', 'json', a:root], {
+        \ 'cwd': a:root,
+        \ 'out_mode': 'raw',
+        \ 'out_cb': function('s:OnNormOutput', [l:output]),
+        \ 'close_cb': function('s:OnNormClose', [a:root, l:output]),
+        \ 'err_io': 'null',
         \ })
 endfunction
 
@@ -733,21 +855,21 @@ function! s:TreePaint() abort
     if !has('patch-9.0.0067')
         return
     endif
-    let l:buf = s:TreeBuf()
-    if l:buf < 0
-        return
+    let l:win = s:TreeWin()
+    if l:win > 0
+        call win_execute(l:win, 'call s:TreePaintInWindow()')
     endif
-    let l:tree = getbufvar(l:buf, 'NERDTree', {})
+endfunction
+
+function! s:TreePaintInWindow() abort
+    let l:tree = get(b:, 'NERDTree', {})
     if empty(l:tree)
         return
     endif
     call s:TreeInit()
-    let l:last = len(getbufline(l:buf, 1, '$'))
-    let l:ma = getbufvar(l:buf, '&modifiable')
-    call setbufvar(l:buf, '&modifiable', 1)
-    call prop_clear(1, l:last, {'bufnr': l:buf})
+    call prop_remove({'types': ['nt_ok', 'nt_ko', 'nt_git'], 'all': 1}, 1, line('$'))
     let l:now = localtime()
-    for l:ln in range(1, l:last)
+    for l:ln in range(1, line('$'))
         try
             let l:path = l:tree.ui.getPath(l:ln)
         catch
@@ -759,29 +881,28 @@ function! s:TreePaint() abort
         let l:f = l:path.str()
         let l:n = get(s:norm_status, l:f, '')
         if l:n ==# 'ok'
-            call prop_add(l:ln, 0, {'type': 'nt_ok', 'text': ' [n:ok]', 'text_align': 'after', 'bufnr': l:buf})
+            call prop_add(l:ln, 0, {'type': 'nt_ok', 'text': ' [n:ok]', 'text_align': 'after'})
         elseif l:n ==# 'ko'
-            call prop_add(l:ln, 0, {'type': 'nt_ko', 'text': ' [n:ko]', 'text_align': 'after', 'bufnr': l:buf})
+            call prop_add(l:ln, 0, {'type': 'nt_ko', 'text': ' [n:ko]', 'text_align': 'after'})
         endif
         let l:g = get(s:git_state, l:f, '')
         if !empty(l:g)
-            call prop_add(l:ln, 0, {'type': 'nt_git', 'text': ' [g:' . l:g . ']', 'text_align': 'after', 'bufnr': l:buf})
+            call prop_add(l:ln, 0, {'type': 'nt_git', 'text': ' [g:' . l:g . ']', 'text_align': 'after'})
         endif
         if has_key(s:git_age, l:f)
             call prop_add(l:ln, 0, {'type': 'nt_git',
                 \ 'text': ' [u:' . s:Age(max([0, l:now - s:git_age[l:f]])) . ']',
-                \ 'text_align': 'after', 'bufnr': l:buf})
+                \ 'text_align': 'after'})
         endif
     endfor
-    call setbufvar(l:buf, '&modifiable', l:ma)
 endfunction
 
 function! s:TreeRefresh() abort
-    let l:buf = s:TreeBuf()
-    if l:buf < 0
+    let l:win = s:TreeWin()
+    if l:win < 0 || !has('patch-9.0.0067') || !has('textprop')
         return
     endif
-    let l:tree = getbufvar(l:buf, 'NERDTree', {})
+    let l:tree = getbufvar(winbufnr(l:win), 'NERDTree', {})
     if empty(l:tree)
         return
     endif
@@ -793,23 +914,37 @@ endfunction
 
 " timer callback must be global
 function! NerdTreeDecorate(...) abort
+    if s:tree_timer != -1
+        call timer_stop(s:tree_timer)
+        let s:tree_timer = -1
+    endif
     call s:TreeRefresh()
+endfunction
+
+function! s:ScheduleTreeRefresh() abort
+    if !has('patch-9.0.0067') || !has('textprop')
+        return
+    endif
+    if s:tree_timer != -1
+        call timer_stop(s:tree_timer)
+    endif
+    let s:tree_timer = timer_start(200, 'NerdTreeDecorate')
 endfunction
 
 augroup NerdTreeDecor
     autocmd!
-    autocmd FileType nerdtree  call timer_start(300, 'NerdTreeDecorate')
-    autocmd BufEnter *         if &filetype ==# 'nerdtree' | call timer_start(100, 'NerdTreeDecorate') | endif
-    autocmd BufWritePost *     call timer_start(200, 'NerdTreeDecorate')
-    autocmd FocusGained *      call timer_start(200, 'NerdTreeDecorate')
+    autocmd FileType nerdtree  call s:ScheduleTreeRefresh()
+    autocmd BufEnter *         if &filetype ==# 'nerdtree' | call s:ScheduleTreeRefresh() | endif
+    autocmd BufWritePost * call s:ScheduleTreeRefresh()
+    autocmd FocusGained * call s:ScheduleTreeRefresh()
 augroup END
 nnoremap <silent> <F5> :call NerdTreeDecorate()<CR>
 
 " ----------------------------------------------------------------------------
 " 42 header — auto on new *.c / *.h files, or press F1
 " ----------------------------------------------------------------------------
-let g:user42 = 'imnadir'
-let g:mail42 = 'imnadir@student.1337.ma'
+let g:user42 = get(g:, 'user42', empty($VIM_42_USER) ? $USER : $VIM_42_USER)
+let g:mail42 = get(g:, 'mail42', empty($VIM_42_EMAIL) ? g:user42 . '@student.1337.ma' : $VIM_42_EMAIL)
 
 let s:hdr_art = [
     \ '        :::      ::::::::',
@@ -829,9 +964,14 @@ function! s:HdrFilename() abort
 endfunction
 
 function! s:HdrText(left, right) abort
-    let l:left = strpart(a:left, 0, 80 - 15 - strlen(a:right) + 1)
+    let l:left = substitute(a:left, '[[:cntrl:]]', ' ', 'g')
+    let l:left = substitute(l:left, '\*/', '* /', 'g')
+    let l:limit = 66 - strdisplaywidth(a:right)
+    while strdisplaywidth(l:left) > l:limit
+        let l:left = strcharpart(l:left, 0, strchars(l:left) - 1)
+    endwhile
     return '/*   ' . l:left
-        \ . repeat(' ', 80 - 10 - strlen(l:left) - strlen(a:right))
+        \ . repeat(' ', 80 - 10 - strdisplaywidth(l:left) - strdisplaywidth(a:right))
         \ . a:right . '   */'
 endfunction
 
@@ -857,7 +997,10 @@ function! s:HdrLine(n) abort
 endfunction
 
 function! s:HdrExists() abort
-    return getline(1) =~# '^/\* \*'
+    let l:border = '/* ' . repeat('*', 74) . ' */'
+    return getline(1) ==# l:border && getline(11) ==# l:border
+        \ && getline(6) =~# '^/\* *By: ' && getline(8) =~# '^/\* *Created: '
+        \ && getline(9) =~# '^/\* *Updated: '
 endfunction
 
 function! s:Header42Update(force) abort
@@ -882,7 +1025,10 @@ function! s:HeaderGuard() abort
         return
     endif
     let l:name = toupper(substitute(expand('%:t:r'), '[^A-Za-z0-9]', '_', 'g')) . '_H'
-    let l:at = s:HdrExists() ? 12 : 0
+    if l:name =~# '^\d'
+        let l:name = 'HEADER_' . l:name
+    endif
+    let l:at = s:HdrExists() ? min([12, line('$')]) : 0
     call append(l:at, ['#ifndef ' . l:name, '# define ' . l:name, ''])
     if getline('$') !~# '^\s*$'
         call append(line('$'), '')
@@ -928,19 +1074,48 @@ augroup END
 "   no Makefile                                   -> gcc -Wall -Wextra -Werror <file>
 " ----------------------------------------------------------------------------
 function! s:Compile() abort
-    if &buftype !=# '' || &filetype ==# 'nerdtree'
-        wincmd p
+    let l:win = s:EditorWin()
+    if !l:win || !win_gotoid(l:win) || empty(expand('%:p'))
+        echo 'Open a source file before building'
+        return
     endif
-    silent! update
+    try
+        update
+    catch
+        echomsg 'Build cancelled: ' . v:exception
+        return
+    endtry
     let l:dir = expand('%:p:h')
-    let l:mk = findfile('Makefile', l:dir . ';' . $HOME)
-    if empty(l:mk)
-        let l:mk = findfile('makefile', l:dir . ';' . $HOME)
-    endif
+    let l:mk = ''
+    while 1
+        for l:name in ['GNUmakefile', 'makefile', 'Makefile']
+            if filereadable(l:dir . '/' . l:name)
+                let l:mk = l:dir . '/' . l:name
+                break
+            endif
+        endfor
+        let l:parent = fnamemodify(l:dir, ':h')
+        if !empty(l:mk) || l:parent ==# l:dir
+            break
+        endif
+        let l:dir = l:parent
+    endwhile
     if !empty(l:mk)
+        if !executable('make')
+            echo 'make is not installed'
+            return
+        endif
         let l:cmd = 'make -C ' . shellescape(fnamemodify(l:mk, ':p:h'))
         let l:ok  = 'Build OK (make)'
     else
+        if expand('%:e') !=# 'c' || !filereadable(expand('%:p'))
+            echo 'Open a C source file or add a Makefile'
+            return
+        endif
+        if !executable('gcc')
+            echo 'gcc is not installed'
+            return
+        endif
         let l:cmd = 'gcc -Wall -Wextra -Werror ' . shellescape(expand('%:p')) . ' -o a.out'
         let l:ok  = 'Build OK -> ./a.out'
     endif
@@ -965,7 +1140,14 @@ function! s:Compile() abort
 endfunction
 nnoremap <silent> <C-e> :call <SID>Compile()<CR>
 if has('terminal')
-    nnoremap <silent> <F6> :botright terminal ++rows=12 ./a.out<CR>
+    function! s:RunBuild() abort
+        if !executable(getcwd() . '/a.out')
+            echo 'No executable ./a.out in this directory. Build first with Ctrl-e.'
+            return
+        endif
+        botright terminal ++rows=12 ./a.out
+    endfunction
+    nnoremap <silent> <F6> :call <SID>RunBuild()<CR>
 endif
 
 " ----------------------------------------------------------------------------
@@ -1063,7 +1245,7 @@ endfunction
 "      aligned declarations, plus blank-line rules.
 " :NormAutoFixToggle turns the save-time fix on/off.
 " ----------------------------------------------------------------------------
-let g:norm_autofix = 1
+let g:norm_autofix = get(g:, 'norm_autofix', 0)
 let g:norm_use_c_formatter = 1
 
 command! NormAutoFixToggle let g:norm_autofix = !g:norm_autofix
@@ -1295,7 +1477,7 @@ endfunction
 " Not auto-fixable (reported with a hint): function > 25 lines, > 4 params, > 5 vars,
 "   > 5 functions, lines > 80, switch/case/goto/do, macro functions, naming prefixes.
 " ============================================================================
-let g:norm_deep = 1
+let g:norm_deep = get(g:, 'norm_deep', 0)
 let g:norm_compile_guard = 1
 let s:norm_todo = []
 
@@ -2076,7 +2258,8 @@ function! s:NormErrors() abort
     call mkdir(l:dir, 'p')
     let l:f = l:dir . '/' . expand('%:t')
     call writefile(l:lines, l:f)
-    let l:out = systemlist('timeout 10 norminette ' . shellescape(l:f) . ' 2>&1')
+    let l:out = systemlist((executable('timeout') ? 'timeout 10 ' : '') . 'norminette ' . shellescape(l:f) . ' 2>&1')
+    let l:rc = v:shell_error
     call delete(l:f)
     let l:errs = []
     for l:ln in l:out
@@ -2091,6 +2274,9 @@ function! s:NormErrors() abort
             return -1
         endif
     endfor
+    if l:rc != 0 && empty(l:errs)
+        return -2
+    endif
     let b:norm_cache_sum = l:sum
     let b:norm_cache_errs = l:errs
     return l:errs
@@ -2204,12 +2390,12 @@ function! s:CompileOk(lines) abort
     let l:f = l:dir . '/chk_' . expand('%:t')
     call writefile(a:lines, l:f)
     let l:src = expand('%:p:h')
-    call system('timeout 10 gcc -fsyntax-only -w -I' . shellescape(l:src) . ' -I' . shellescape(l:src . '/..')
+    call system((executable('timeout') ? 'timeout 10 ' : '') . 'gcc -fsyntax-only -w -I' . shellescape(l:src) . ' -I' . shellescape(l:src . '/..')
         \ . ' -I' . shellescape(l:src . '/include') . ' -I' . shellescape(l:src . '/includes') . ' '
         \ . shellescape(l:f) . ' 2>&1')
     let l:rc = v:shell_error
     call delete(l:f)
-    return l:rc == 0 ? 1 : 0
+    return l:rc == 0 ? 1 : l:rc == 1 ? 0 : -1
 endfunction
 
 " Normalise declarations inside functions BEFORE any formatter sees them
@@ -2255,23 +2441,29 @@ endfunction
 
 " the save-time fix: layout (c_formatter_42 / built-in), then the deep fix.
 " If the text compiled before and does not after, everything is reverted.
-function! Fix42Norm() abort
+function! Fix42Norm(...) abort
     let l:view = winsaveview()
     let l:orig = getline(1, '$')
-    let l:deep = g:norm_deep && executable('norminette') && expand('%:e') =~# '^[ch]$'
-    let l:c0 = l:deep ? s:CompileOk(l:orig) : -1
-    if l:deep
-        call s:NormalizeDecls()
-    endif
-    call s:NormLayout()
-    if l:deep
-        call s:NormDeep()
-    endif
-    if l:c0 == 1 && g:norm_compile_guard && s:CompileOk(getline(1, '$')) == 0
+    let l:deep = get(a:000, 0, g:norm_deep) && executable('norminette') && expand('%:e') =~# '^[ch]$'
+    let l:c0 = g:norm_compile_guard ? s:CompileOk(l:orig) : -1
+    try
+        if l:deep
+            call s:NormalizeDecls()
+        endif
+        call s:NormLayout()
+        if l:deep
+            call s:NormDeep()
+        endif
+        if l:c0 == 1 && s:CompileOk(getline(1, '$')) == 0
+            call s:SetLines(l:orig)
+            echomsg 'Norm auto-fix reverted because the formatted file failed to compile.'
+        endif
+    catch
         call s:SetLines(l:orig)
-        echo 'Norm auto-fix reverted: it would have broken the compilation (fix by hand, Space n)'
-    endif
-    call winrestview(l:view)
+        echomsg 'Norm auto-fix reverted: ' . v:exception
+    finally
+        call winrestview(l:view)
+    endtry
 endfunction
 
 "  <leader>x : fix everything we can now, save, and re-check with norminette
@@ -2280,24 +2472,27 @@ function! s:NormFixNow() abort
         echo 'Norm fix: only for .c / .h files'
         return
     endif
-    call Fix42Norm()
+    if &readonly || !&modifiable || &buftype !=# ''
+        echo 'Norm fix requires a writable file buffer'
+        return
+    endif
+    call Fix42Norm(1)
     let g:norm_just_fixed = 1
-    silent write
-    let g:norm_just_fixed = 0
-    call s:NormCheck(0)
+    try
+        silent write
+    finally
+        let g:norm_just_fixed = 0
+    endtry
+    call s:NormCheck(1)
     echo 'Norm auto-fix done  ' . get(b:, 'norm_state', '')
         \ . (executable('c_formatter_42') ? '' : '   (tip: pip3 install --user c-formatter-42 fixes more)')
-    if get(b:, 'norm_state', '') =~# 'err'
-        copen
-        wincmd p
-    endif
 endfunction
 nnoremap <silent> <leader>x :call <SID>NormFixNow()<CR>
 
 function! s:NormLayout() abort
     let l:view = winsaveview()
     let l:start = 1
-    if getline(1) =~# '^/\* \*'
+    if s:HdrExists()
         let l:start = 12
         if line('$') >= 11 && getline(12) !~# '^\s*$'
             call append(11, '')
@@ -2410,7 +2605,10 @@ function! s:NormCheck(open) abort
     let l:errs = s:NormErrors()
     call sign_unplace('NormSigns', {'buffer': l:buf})
     if type(l:errs) != v:t_list
-        let b:norm_state = '[norm:parse error]'
+        let b:norm_state = l:errs == -1 ? '[norm:parse error]' : '[norm:check failed]'
+        if a:open
+            echomsg b:norm_state
+        endif
         redrawstatus!
         return
     endif
@@ -2418,15 +2616,20 @@ function! s:NormCheck(open) abort
     for l:e in l:errs
         call add(l:qf, {'filename': l:file, 'lnum': l:e.lnum, 'col': l:e.col,
             \ 'text': l:e.code . ': ' . l:e.msg . get(s:norm_hint, l:e.code, ''), 'type': 'E'})
-        call sign_place(0, 'NormSigns', 'NormError', l:buf, {'lnum': l:e.lnum, 'priority': 20})
+        if l:e.lnum > 0 && l:e.lnum <= line('$')
+            call sign_place(0, 'NormSigns', 'NormError', l:buf, {'lnum': l:e.lnum, 'priority': 20})
+        endif
     endfor
-    call setqflist([], 'r', {'title': 'norminette', 'items': l:qf})
     let b:norm_state = empty(l:qf) ? '[norm:ok]' : '[norm:' . len(l:qf) . ' err]'
-    if a:open && !empty(l:qf)
-        copen
-        wincmd p
-    elseif empty(l:qf)
-        silent! cclose
+    if a:open
+        call setloclist(0, [], ' ', {'title': 'norminette', 'items': l:qf})
+        if empty(l:qf)
+            echo 'Norminette: OK'
+        else
+            let l:win = win_getid()
+            lopen
+            call win_gotoid(l:win)
+        endif
     endif
     redrawstatus!
 endfunction
@@ -2619,6 +2822,9 @@ let g:stats_insert_seconds = 0
 let g:stats_mode_since = 0
 
 function! s:StatsLog(kind, data) abort
+    if get(g:, 'vim_config_installing', 0)
+        return
+    endif
     try
         call mkdir(fnamemodify(g:stats_log, ':h'), 'p')
         call writefile([json_encode({'t': strftime('%Y-%m-%dT%H:%M:%S%z'),
@@ -2677,8 +2883,8 @@ augroup DevStats
     autocmd BufWritePost * call s:StatsFile('file_save')
     autocmd BufNewFile   * call s:StatsFile('file_create')
     autocmd VimLeave     * call s:StatsSessionEnd()
-    autocmd VimLeave     * if executable(expand('~/.local/bin/dev-stats'))
-        \ | call system(expand('~/.local/bin/dev-stats') . ' collect >/dev/null 2>&1 &')
+    autocmd VimLeave     * if !get(g:, 'vim_config_installing', 0) && executable(expand('~/.local/bin/dev-stats'))
+        \ | call system(shellescape(expand('~/.local/bin/dev-stats')) . ' collect >/dev/null 2>&1 &')
         \ | endif
 augroup END
 
@@ -2826,7 +3032,7 @@ function! s:KeysRows() abort
         \ ['Space i', '#include for the function/macro under the cursor'],
         \ ['Space I', 'add every missing #include this file needs'],
         \ ['sign !!', 'forbidden: for do switch case goto ? :'],
-        \ ['(on save)', 'Norm is auto-fixed for .c / .h'],
+        \ ['(on save)', 'Norm diagnostics refresh for .c / .h'],
         \ [':NormAutoFixToggle', 'turn the auto-fix on save on / off'],
         \ ['sign 80 / >4', 'line wider than 80 / more than 4 parameters'],
         \ ['status line', 'ƒ n/5 functions, [x/25] current function length'],
@@ -3193,8 +3399,11 @@ function! s:AutoSaveNow(all) abort
     endtry
 endfunction
 
-function! s:AutoSaveFire(id) abort
+function! s:AutoSaveFire(buf, id) abort
     let s:as_timer = -1
+    if bufnr('%') != a:buf
+        return
+    endif
     if mode() =~# '^[cR]'
         call s:AutoSaveArm()
         return
@@ -3209,7 +3418,7 @@ function! s:AutoSaveArm() abort
     if s:as_timer != -1
         call timer_stop(s:as_timer)
     endif
-    let s:as_timer = timer_start(g:autosave_delay, function('s:AutoSaveFire'))
+    let s:as_timer = timer_start(g:autosave_delay, function('s:AutoSaveFire', [bufnr('%')]))
 endfunction
 
 augroup AutoSave
@@ -3434,19 +3643,35 @@ endfor
 set sessionoptions=buffers,curdir,folds
 
 function! s:SessFile() abort
-    return expand('~/.vim/sessions/') . substitute(getcwd(), '[/\\:]', '%', 'g') . '.vim'
+    return expand('~/.vim/sessions/') . sha256(getcwd(-1)) . '.vim'
 endfunction
 
 function! s:SessSave() abort
-    if empty(filter(getbufinfo({'buflisted': 1}), 'v:val.name !=# ""'))
+    if get(g:, 'vim_config_installing', 0)
         return
     endif
-    silent! NERDTreeClose
-    call mkdir(expand('~/.vim/sessions'), 'p')
-    execute 'mksession! ' . fnameescape(s:SessFile())
+    if empty(filter(getbufinfo({'buflisted': 1}), 'v:val.name !=# "" && !isdirectory(v:val.name)'))
+        return
+    endif
+    let l:session = s:SessFile()
+    let l:temp = l:session . '.' . getpid() . '.tmp'
+    try
+        call mkdir(fnamemodify(l:session, ':h'), 'p', 0700)
+        execute 'mksession! ' . fnameescape(l:temp)
+        if rename(l:temp, l:session) != 0
+            echomsg 'Could not save Vim session: ' . l:session
+        endif
+    catch
+        echomsg 'Could not save Vim session: ' . v:exception
+    finally
+        call delete(l:temp)
+    endtry
 endfunction
 
 function! s:Startup() abort
+    if get(g:, 'vim_config_installing', 0)
+        return
+    endif
     " `vim .` / `vi some/dir`: enter the folder and drop the directory buffer
     let l:dir = (argc() == 1 && isdirectory(argv(0))) ? fnamemodify(argv(0), ':p') : ''
     if !empty(l:dir)
@@ -3454,13 +3679,25 @@ function! s:Startup() abort
         let l:old = bufnr('%')
         enew
         silent! execute 'bwipeout ' . l:old
-        silent! argdelete *
+        silent! %argdelete
     endif
 
     " restore last session of this folder (plain `vim` or `vim .`)
-    if (argc() == 0 || !empty(l:dir)) && filereadable(s:SessFile())
-        silent! execute 'source ' . fnameescape(s:SessFile())
+    if argc() == 0 || !empty(l:dir)
+        let l:session = s:SessFile()
+        if !filereadable(l:session)
+            let l:session = expand('~/.vim/sessions/') . substitute(getcwd(), '[/\\:]', '%', 'g') . '.vim'
+        endif
+        if filereadable(l:session)
+            try
+                execute 'silent source ' . fnameescape(l:session)
+            catch
+                echomsg 'Could not restore Vim session: ' . v:exception
+            endtry
+        endif
     endif
+
+    call s:UseWideTreeIcons()
 
     " tree on the left, cursor in the editor on the right
     if exists(':NERDTree')
@@ -3469,8 +3706,16 @@ function! s:Startup() abort
     endif
 endfunction
 
+function! s:StartupQuietly() abort
+    try
+        call s:Startup()
+    finally
+        let &shortmess = s:startup_shortmess
+    endtry
+endfunction
+
 augroup Layout
     autocmd!
-    autocmd VimEnter * ++nested call s:Startup()
+    autocmd VimEnter * ++nested call s:StartupQuietly()
     autocmd VimLeavePre * call s:SessSave()
 augroup END
