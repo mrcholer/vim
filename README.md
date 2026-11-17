@@ -1,8 +1,7 @@
 # Agent-free Vim config
 
 Pure Vim setup: **file tree sidebar, bottom terminal panel, file icons, 42 Norm
-helpers, build/run, git-aware status line**. No AI, no agent panel, no Kitty
-wrapper, nothing phones home.
+helpers, build/run, git-aware status line**.
 
 ## What's inside
 
