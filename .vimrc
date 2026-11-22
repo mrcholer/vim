@@ -587,7 +587,7 @@ let g:DevIconsEnableFoldersOpenClose = 1
 " Seti and Devicons glyphs from Nerd Fonts. vim-devicons merges these
 " overrides into its own dictionaries and handles filenames before extensions.
 let g:WebDevIconsUnicodeDecorateFileNodesExtensionSymbols = {
-    \ 'c': '', 'h': '', 'cpp': '', 'hpp': '', 'cc': '', 'cxx': '', 'hh': '', 'hxx': '',
+    \ 'c': '🄃', 'h': '', 'cpp': '', 'hpp': '', 'cc': '', 'cxx': '', 'hh': '', 'hxx': '',
     \ 'rs': '', 'go': '', 'js': '', 'jsx': '', 'ts': '', 'tsx': '', 'mjs': '', 'cjs': '',
     \ 'py': '', 'pyi': '', 'pyw': '', 'pyc': '', 'pyd': '',
     \ 'java': '', 'class': '', 'jar': '', 'kt': '', 'kts': '', 'scala': '',
@@ -631,50 +631,7 @@ let g:WebDevIconsUnicodeDecorateFileNodesExactSymbols = {
     \ }
 let g:webdevicons_conceal_nerdtree_brackets = 1
 let g:WebDevIconsNerdTreeAfterGlyphPadding = '  '
-
-" The optional local wide icon font draws these glyphs across two cells.
-let s:wide_icon_codes = [
-    \ 0xe5fe, 0xe5ff, 0xe600, 0xe603, 0xe606, 0xe607, 0xe608, 0xe609, 0xe60a,
-    \ 0xe60b, 0xe60c, 0xe60d, 0xe60e, 0xe60f, 0xe610, 0xe611, 0xe612, 0xe613,
-    \ 0xe614, 0xe615, 0xe619, 0xe61b, 0xe61c, 0xe61d, 0xe61e, 0xe61f, 0xe620,
-    \ 0xe623, 0xe624, 0xe627, 0xe628, 0xe62b, 0xe62c, 0xe62d, 0xe706, 0xe707,
-    \ 0xe70c, 0xe718, 0xe728, 0xe737, 0xe738, 0xe745, 0xe755, 0xe768, 0xe769,
-    \ 0xe76a, 0xe791, 0xe795, 0xe798, 0xe7a7, 0xe7a8, 0xe7af, 0xe7b0, 0xe7b1,
-    \ 0xe7b4, 0xe7b8, 0xe7ba, 0xf0fd, 0xf1c9, 0xf296, 0xf313, 0xf482, 0xf499,
-    \ 0xf80a, 0xf81a, 0xfac5, 0xfb68, 0xfba7, 0xfcb9, 0xfcd2, 0xfd42,
-    \ ]
-
-function! s:WideTreeIcon(symbol) abort
-    let l:code = char2nr(a:symbol)
-    if index(s:wide_icon_codes, l:code) < 0
-        return a:symbol
-    endif
-    let l:left = 0x100000 + 2 * (l:code - 0xe000)
-    return nr2char(l:left) . nr2char(l:left + 1)
-endfunction
-
-function! s:UseWideTreeIcons() abort
-    if !g:webdevicons_enable_nerdtree || !exists('*WebDevIconsGetFileTypeSymbol')
-        \ || $VIM_WIDE_ICONS ==# '0' || empty($DISPLAY . $WAYLAND_DISPLAY)
-        \ || !filereadable(expand('~/.local/share/fonts/VimTerminalMonoWideIcons-Regular.ttf'))
-        return
-    endif
-    let l:cached_server = expand('~/.vim/wide-icons-cached-terminal')
-    if !empty($GNOME_TERMINAL_SERVICE) && filereadable(l:cached_server)
-        \ && get(readfile(l:cached_server, '', 1), 0, '') ==#
-        \ sha256($DBUS_SESSION_BUS_ADDRESS . "\n" . $GNOME_TERMINAL_SERVICE)
-        return
-    endif
-    call map(g:WebDevIconsUnicodeDecorateFileNodesExtensionSymbols, 's:WideTreeIcon(v:val)')
-    call map(g:WebDevIconsUnicodeDecorateFileNodesExactSymbols, 's:WideTreeIcon(v:val)')
-    call map(g:WebDevIconsUnicodeDecorateFileNodesPatternSymbols, 's:WideTreeIcon(v:val)')
-    for l:option in ['WebDevIconsUnicodeDecorateFileNodesDefaultSymbol',
-        \ 'WebDevIconsUnicodeDecorateFolderNodesDefaultSymbol',
-        \ 'WebDevIconsUnicodeDecorateFolderNodesSymlinkSymbol', 'DevIconsDefaultFolderOpenSymbol']
-        let g:[l:option] = s:WideTreeIcon(g:[l:option])
-    endfor
-    let g:WebDevIconsNerdTreeAfterGlyphPadding = ' '
-endfunction
+let g:webdevicons_enable_nerdtree = 1
 
 let g:NERDTreeShowHidden = 1             " like VSCode: show dotfiles...
 let g:NERDTreeMinimalUI = 1
@@ -3898,8 +3855,6 @@ function! s:Startup() abort
             endtry
         endif
     endif
-
-    call s:UseWideTreeIcons()
 
     " tree on the left, cursor in the editor on the right
     if exists(':NERDTree')
