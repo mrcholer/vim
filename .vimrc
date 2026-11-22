@@ -587,7 +587,7 @@ let g:DevIconsEnableFoldersOpenClose = 1
 " Seti and Devicons glyphs from Nerd Fonts. vim-devicons merges these
 " overrides into its own dictionaries and handles filenames before extensions.
 let g:WebDevIconsUnicodeDecorateFileNodesExtensionSymbols = {
-    \ 'c': '🄃', 'h': '', 'cpp': '', 'hpp': '', 'cc': '', 'cxx': '', 'hh': '', 'hxx': '',
+    \ 'c': '', 'h': '', 'cpp': '', 'hpp': '', 'cc': '', 'cxx': '', 'hh': '', 'hxx': '',
     \ 'rs': '', 'go': '', 'js': '', 'jsx': '', 'ts': '', 'tsx': '', 'mjs': '', 'cjs': '',
     \ 'py': '', 'pyi': '', 'pyw': '', 'pyc': '', 'pyd': '',
     \ 'java': '', 'class': '', 'jar': '', 'kt': '', 'kts': '', 'scala': '',
